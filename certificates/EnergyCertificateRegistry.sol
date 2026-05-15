@@ -2,8 +2,27 @@
 pragma solidity ^0.8.26;
 
 import "../access/EnergyAccessControl.sol";
+import "./EnergyCertificateLedger.sol";
+
+interface IEnergyCertificateLedger {
+    function mintFromApprovedBatch(
+        address account,
+        uint256 batchId,
+        uint256 amount
+    ) external;
+}
 
 contract EnergyCertificateRegistry is EnergyAccessControl {
+
+    IEnergyCertificateLedger public ledger;
+
+    constructor(address ledgerAddress) {
+        if (ledgerAddress == address(0)) {
+            revert InvalidAccount();
+        }
+
+        ledger = IEnergyCertificateLedger(ledgerAddress);
+    }
 
     //Enums
     enum BatchStatus {
@@ -47,7 +66,7 @@ contract EnergyCertificateRegistry is EnergyAccessControl {
         bytes32 rejectionReasonHash;
     }
 
-    // Memory
+    // Storage
     uint256 private batchCounter;
     mapping(uint256 => EnergyBatch) public batches;
     mapping(address => uint256[]) public producerBatches;
@@ -156,7 +175,11 @@ contract EnergyCertificateRegistry is EnergyAccessControl {
             msg.sender
         );
 
-        // Implementar saldo no ledger quando o EnergyCertificateLedger for criado.
+        ledger.mintFromApprovedBatch(
+            batch.producer,
+            batch.id,
+            batch.amount
+        );
     }
 
     function rejectBatch(uint256 batchId) external onlyAuditor whenNotPaused {
